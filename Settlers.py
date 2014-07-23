@@ -2,6 +2,7 @@ import random
 import copy
 board = ["", "","","","","","","","","","","","","","","","","",""]
 def main(players):
+    debug = 0
     string = '\n'
     print(string)
     game_end = 0
@@ -12,6 +13,9 @@ def main(players):
     buildings_to_roads_dict = starting_dicts[2]
     roads_to_roads_dict = starting_dicts[3]
     tiles_to_buildings_dict = starting_dicts[4]
+    ports = [["?", "B", "W"], ["?", "G", "O"], ["?", "S", "?"]]
+    shifter = int(random.random() * 3)
+    ports = generate_port_list(ports, shifter)
     buildings = []
     roads = []
     board = gen_map_init()
@@ -21,18 +25,23 @@ def main(players):
     thief = desert
     del board[-1]
     numbers = gen_numbers_init(desert)
-    map_display = display_map(board, numbers, buildings, buildings_dict, roads, roads_dict,  thief)
+    map_display = display_map(board, numbers, buildings, buildings_dict, roads, roads_dict,  thief, ports)
     inventories = []
     cards =[]
     for x in players:
         inventories.append([x, 0, 0, 0, 0, 0])
     random.shuffle(players)
+    string = str("Player order is as follows:" + '\n')
+    print(string)
+    for player in players:
+        string = str(player + '\n')
+        print(string)
     for x in list(range(len(players))):
         place_first_town(players[x], buildings, roads, map_display, buildings_to_roads_dict, board, tiles_to_buildings_dict, inventories)
-        display_map(board, numbers, buildings, buildings_dict, roads, roads_dict,  thief)
+        display_map(board, numbers, buildings, buildings_dict, roads, roads_dict,  thief, ports)
     for x in list(range(len(players))):
         place_first_town(players[(x-(len(players)-1))*(-1)], buildings, roads, map_display, buildings_to_roads_dict, board, tiles_to_buildings_dict, inventories)
-        display_map(board, numbers, buildings, buildings_dict, roads, roads_dict,  thief)
+        display_map(board, numbers, buildings, buildings_dict, roads, roads_dict,  thief, ports)
     while game_end == 0:
         roll = dice_roll()
         rolls.append(roll)
@@ -54,12 +63,12 @@ def main(players):
             construction_variable = thief_turn(players,  player_turn_index,  thief,  inventories,  buildings,  tiles_to_buildings_dict)
             inventories = construction_variable[0]
             thief = construction_variable[1]
-        display_map(board, numbers, buildings, buildings_dict, roads, roads_dict,  thief)
+        display_map(board, numbers, buildings, buildings_dict, roads, roads_dict,  thief, ports)
         for x in inventories:
             string = str("Player:" + str(x[0]) + "now has:" + '\t' + "Sheep:" + str(x[1]) + '\t' + "Wood:" + str(x[2]) + '\t' + "Grain:" + str(x[3]) + '\t' + "Bricks:" + str(x[4]) + '\t' + "Ore:" + str(x[5]))
             print(string)
         construction_variable = ask_for_instructions(player_turn_index, players, buildings, roads, buildings_dict, roads_dict, buildings_to_roads_dict, roads_to_roads_dict, tiles_to_buildings_dict, rolls,
-                                                     incomes, inventories, board, numbers, cards,  thief)
+                                                     incomes, inventories, board, numbers, cards,  thief, ports, debug)
         buildings = construction_variable[0]
         roads = construction_variable[1]
         inventories = construction_variable[2]
@@ -71,28 +80,71 @@ def main(players):
 
 
         
-def ask_for_instructions(player_turn_index, players, buildings, roads, buildings_dict, roads_dict, buildings_to_roads_dict, roads_to_roads_dict, tiles_to_buildings_dict, rolls, incomes, inventories, board, numbers, cards,  thief):
+def ask_for_instructions(player_turn_index, players, buildings, roads, buildings_dict, roads_dict, buildings_to_roads_dict, roads_to_roads_dict, tiles_to_buildings_dict, rolls, incomes, inventories, board, numbers, cards,  thief, ports, debug):
     end_function = 0
     string = str("It is now player " + players[player_turn_index] + "'s turn." + '\n')
     print(string)
     while end_function == 0:
+        string = str("Player: " + players[player_turn_index] + " now has:" + '\t' + "Sheep:" +
+                     str(inventories[player_turn_index][1]) + '\t' + '\t' + "Wood:" + str(inventories[player_turn_index][2])
+                     + '\t' + "Grain:" + str(inventories[player_turn_index][3]) + '\t' + '\t' + "Bricks:" +
+                     str(inventories[player_turn_index][4]) + '\t' + "Ore:" + str(inventories[player_turn_index][5]))
+        display_map(board, numbers, buildings, buildings_dict, roads, roads_dict,  thief, ports)
+        print(string)
         string = str("What would you like to do, " + str(players[player_turn_index]) + '\n')
         print(string)
         print("Press H to see a list of functions")
         print("")
-        request = raw_input("-->")
+        request = get_input(["S", ["R", "B", "T", "U", "H", "E", "P", "D", "A"]], "-->")
         request.upper()
+        if request == "A":
+            password = raw_input("What is the password for root access?")
+            if password == "Password":
+                print("Submit commands.  Press E to exit.")
+                leave = 0
+                while leave == 0:
+                    request = raw_input("-->")
+                    if request == "E":
+                        leave = 1
+                    elif request == "M":
+                        display_map(board, numbers, buildings, buildings_dict, roads, roads_dict, thief, ports)
+                    else:
+                        try:
+                            exec(request)
+                        except:
+                            print("I could not understand this request")
+                        
+        if request == "D":
+            password = raw_input("What is the password for debug mode?")
+            if password == "Password":
+                debug = 1
+                print("You are now in debug mode.")
+            else:
+                print("I'm sorry that is the wrong password.")
+        if request == "P":
+            string = str("What resource would you like to trade with the ports?  [S]heep/[W]ood/[G]rain/[B]rick/[O]re/[E]xit" + '\n')
+            print(string)
+            trades = find_usable_ports(players, player_turn_index, buildings, ports)
+            string = str("You can trade " + str(trades[0]) + " sheep for one of any resource" + '\n' +
+                         "You can trade " + str(trades[1]) + " wood for one of any resource" + '\n' +
+                         "You can trade " + str(trades[2]) + " grain for one of any resource" + '\n' +
+                         "You can trade " + str(trades[3]) + " brick for one of any resource" + '\n' +
+                         "You can trade " + str(trades[4]) + " ore for one of any resource" + '\n')
+            print(string)
+            inventories = port_trade(players, player_turn_index, inventories, trades)
+            
+                
         if request == "R":
             data_request(rolls, incomes, inventories, buildings, board, numbers, tiles_to_buildings_dict)
         if request == "B":
-            after_build = function_build(buildings, roads, cards, buildings_to_roads_dict, roads_to_roads_dict, inventories, players, player_turn_index)
+            after_build = function_build(buildings, roads, cards, buildings_to_roads_dict, roads_to_roads_dict, inventories, players, player_turn_index, debug)
             buildings = after_build[0]
             roads = after_build[1]
             cards = after_build[2]
         if request == "T":
             destination_player = "None"
             while destination_player == "None":
-                destination_player = raw_input("Who would you like to trade with?")
+                destination_player = get_input(["S", players], "Who would you like to trade with?")
                 is_real = 0
                 if destination_player != "X":
                     for x in players:
@@ -126,18 +178,96 @@ def ask_for_instructions(player_turn_index, players, buildings, roads, buildings
             end_function = 1
     construction_variable = [buildings, roads, inventories, cards,  thief]
     return construction_variable
+
+def port_trade(players, player_turn_index, inventories, trades):
+    give = -1
+    get= -1
+    while give == -1:
+        give = get_input(["S", ["S", "W", "G", "B", "O", "E"]], "--> ")
+        if give == "E":
+            return inventories
+        elif give == "S":
+            if inventories[player_turn_index][1] >= trades[0]:
+                inventories[player_turn_index][1] -= trades[0]
+        elif give == "W":
+            if inventories[player_turn_index][2] >= trades[1]:
+                inventories[player_turn_index][2] -= trades[1]
+        elif give == "G":
+            if inventories[player_turn_index][3] >= trades[2]:
+                inventories[player_turn_index][3] -= trades[2]
+        elif give == "B":
+            if inventories[player_turn_index][4] >= trades[3]:
+                inventories[player_turn_index][4] -= trades[3]
+        elif give == "O":
+            if inventories[player_turn_index][5] >= trades[4]:
+                inventories[player_turn_index][5] -= trades[4]
+        else:
+            give = -1
+    string = str("What resource would you like to recieve? [S]heep/[W]ood/[G]rain/[B]rick/[O]re" + '\n')
+    print(string)
+    while get == -1:
+        get = get_input(["S", ["S", "W", "G", "B", "O"]], "--> ")
+        if get == "S":
+            inventories[player_turn_index][1] += 1
+        if get == "W":
+            inventories[player_turn_index][2] += 1
+        if get == "G":
+            inventories[player_turn_index][3] += 1
+        if get == "B":
+            inventories[player_turn_index][4] += 1
+        if get == "O":
+            inventories[player_turn_index][5] += 1
+    return inventories
+            
+            
+            
                     
+def get_input(input_type, prompt):
+    if input_type[0] == "L":
+        option_list = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+                       "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"]
+        user_input = get_input(["S", option_list], prompt)
+        return user_input
+    user_input = type(True)
+    if len(input_type) == 1:
+        if input_type == "S":
+            while type(user_input) != type("String"):
+                user_input = raw_input(prompt)
+                try:
+                    user_input = int(user_input)
+                    user_input = 1
+                except:
+                    if len(user_input) == 1:
+                        return user_input
+                    else:
+                        user_input = 1
+        if input_type == "I":
+            while type(user_input) != type(5):
+                user_input = raw_input(prompt)
+                if len(user_input) == 1:
+                    try:
+                        user_input = int(user_input)
+                        return user_input
+                    except:
+                        user_input = type(True)
+    else:
+        option_list = input_type[1]
+        input_type = input_type[0]
+        while user_input not in option_list:
+            user_input = get_input(input_type, prompt)
+        return user_input
+
+            
+
+
 
 def thief_turn(players,  player_turn_index,  thief,  inventories,  buildings,  tiles_to_buildings_dict):
-    print("Under construction... program will commense to poop out!")
     print("You get to move the thief!  What row would you like to move it to?")
     valid = 0
     while valid == 0:
-        row = raw_input("-->")
+        row = get_input(["I", [1, 2, 3, 4, 5]], "-->")
         print("What column would you like to move it to?")
-        column = raw_input("-->")
-        row = int(row)
-        column = int(column)
+        column = get_input(["I", [1, 2, 3, 4, 5]], "-->")
         location = find_desired_location_tile(row,  column)
         if location != thief:
             if location != -1:
@@ -155,7 +285,7 @@ def thief_turn(players,  player_turn_index,  thief,  inventories,  buildings,  t
     print("Who's inventory would you like to steal from?")
     valid = 0
     while valid == 0:
-        player = raw_input("-->")
+        player = get_input(["S", players], "-->")
         player.upper()
         if player in potential_inventories:
             valid = 1
@@ -258,37 +388,53 @@ def find_desired_location_tile(row,  column):
             location = 18
     return location
 
-def function_build(buildings, roads, cards, buildings_to_roads_dict, roads_to_roads_dict, inventories, players, player_turn_index):
-    print("Under construction. Come back later!")
+def build_all_buildings(board, numbers, buildings, buildings_dict, roads_dict, thief, ports):
+    for building in buildings_dict:
+        buildings.append([building, "A", "S"])
+    display_map(board, numbers, buildings, buildings_dict, roads, roads_dict,  thief, ports)
+    return
+    
+
+def function_build(buildings, roads, cards, buildings_to_roads_dict, roads_to_roads_dict, inventories, players, player_turn_index, debug):
     string = str("What would you like to build/buy? [S]ettlement/ci[T]y/[R]oad/[C]ard/[E]xit" + '\n' + "-->")
-    request = raw_input(string)
+    request = get_input(["S", ["S", "T", "R", "C", "E"]], string)
     if request == "S":
         string = str('\n' + "What row would you like to put the settlement in?" + '\n' + "-->")
-        row = int(raw_input(string))
+        row = get_input(["I", [1, 2, 3, 4, 5]], string)
         string = str('\n' + "What column would you like to put the settlement in?" + '\n' + "-->")
-        column = int(raw_input(string))
+        column = get_input(["I", [1, 2, 3, 4, 5]], string)
         string = str('\n' + "What direction would you like to put the settlement in?" + '\n' + "-->")
-        direction = int(raw_input(string))
+        direction = get_input(["I", [1, 2, 3, 7, 8, 9]], string)
         location = find_desired_location_building(row, column, direction)
-        valid = test_if_building_is_in_range(location, buildings, buildings_to_roads_dict)
+        if debug == 0:
+            valid = test_if_building_is_in_range(location, buildings, buildings_to_roads_dict)
+        else:
+            valid = 1
         if valid == 1:
-            valid = test_if_building_is_connected(location, roads, roads_to_roads_dict, buildings_to_roads_dict, players, player_turn_index)
+            if debug == 0:
+                valid = test_if_building_is_connected(location, roads, roads_to_roads_dict, buildings_to_roads_dict, players, player_turn_index)
+            else:
+                valid = 1
         if valid != 1:
             location = -1
         if location == -1:
             print("Sorry, that is in invalid location")
         if valid == 1:
-            test_inventory = inventory_request_test(players, player_turn_index, inventories, 'S')
+            if debug == 0:
+                test_inventory = inventory_request_test(players, player_turn_index, inventories, 'S')
+            else:
+                test_inventory = 1
         if test_inventory == 1:
-            inventories = inventory_withdraw(players, player_turn_index, inventories, 'S')
+            if debug == 0:
+                inventories = inventory_withdraw(players, player_turn_index, inventories, 'S')
             buildings.append([location, players[player_turn_index], 'S'])
     if request == "T":
         string = str('\n' + "What row would you like to put the city in?" + '\n' + "-->")
-        row = input(string)
+        row = get_input(["I", [1, 2, 3, 4, 5]], string)
         string = str('\n' + "What column would you like to put the city in?" + '\n' + "-->")
-        column = input(string)
+        column = get_input(["I", [1, 2, 3, 4, 5]], string)
         string = str('\n' + "What direction would you like to put the city in?" + '\n' + "-->")
-        direction = input(string)
+        direction = get_input(["I", [1, 2, 3, 7, 8, 9]], string)
         location = find_desired_location_building(row, column, direction)
         valid = test_city_construction(players, player_turn_index, location, buildings)
         if valid == 1:
@@ -309,17 +455,20 @@ def function_build(buildings, roads, cards, buildings_to_roads_dict, roads_to_ro
             print("You don't have enough resources to build a city")
     if request == "R":
         string = str('\n' + "What row would you like to put the road in?" + '\n' + "-->")
-        row = input(string)
+        row = get_input(["I", [1, 2, 3, 4, 5]], string)
         string = str('\n' + "What column would you like to put the road in?" + '\n' + "-->")
-        column = input(string)
+        column = get_input(["I", [1, 2, 3, 4, 5]], string)
         string = str('\n' + "What direction would you like to put the road in?" + '\n' + "-->")
-        direction = input(string)
+        direction = get_input(["I", [1, 2, 3, 7, 8, 9]], string)
         location = find_desired_location_road(row, column, direction)
         valid = test_road_construction(players, player_turn_index, location, roads, buildings, roads_to_roads_dict, buildings_to_roads_dict)
+        print(valid)
         if valid == 1:
             test_inventory = inventory_request_test(players, player_turn_index, inventories, 'R')
         else:
             print("You can't build a road there")
+            returned_variable = [buildings, roads, cards]
+            return returned_variable
         if test_inventory == 1:
             inventories = inventory_withdraw(players, player_turn_index, inventories, 'R')
             roads.append([location, players[player_turn_index], 'R'])
@@ -333,8 +482,10 @@ def function_build(buildings, roads, cards, buildings_to_roads_dict, roads_to_ro
         else:
             print("You don't have enought resources to buy a card")
     if request == "E":
-        return
-    return
+        returned_variable = [buildings, roads, cards]
+        return returned_variable
+    returned_variable = [buildings, roads, cards]
+    return returned_variable
 
 def test_city_construction(players, player_turn_index, location, buildings):
     valid = 0
@@ -444,7 +595,7 @@ def initiate_trade(players, player_turn_index, destination_player_index, invento
         if offer != [0,  0,  0,  0,  0]:
             string = str("Your offer now consists of " + str(offer[0]) + " sheep, " + str(offer[1]) + " wood, " + str(offer[2]) + " grain, " + str(offer[3]) + " brick, " + str(offer[4]) + " ore.")
             print(string)
-        value = raw_input("-->")
+        value = get_input(["S", ["W", "B", "S", "G", "O", "D", "E"]], "-->")
         value.upper()
         if value == "S":
             if offer[0] < inventories[player_turn_index][1]:
@@ -484,7 +635,7 @@ def initiate_trade(players, player_turn_index, destination_player_index, invento
         if request != [0,  0,  0,  0,  0]:
             string = str("Your request now consists of " + str(request[0]) + " sheep, " + str(request[1]) + " wood, " + str(request[2]) + " grain, " + str(request[3]) + " brick, " + str(request[4]) + " ore.")
             print(string)
-        value = raw_input("-->")
+        value = get_input(["S", ["W", "B", "S", "G", "O", "D", "E"]], "-->")
         value.upper()
         if value == "S":
             request[0] += 1
@@ -512,7 +663,7 @@ def initiate_trade(players, player_turn_index, destination_player_index, invento
             if inventories[player_turn_index][index + 1] > request[index]:
                 valid += 1
         if valid > 0:
-            confirmation = raw_input("Is this the trade you want to make? (Y/N)")
+            confirmation = get_input(["S", ["Y", "N"]], "Is this the trade you want to make? (Y/N)")
             confirmation.upper()
             if confirmation == "Y":
                 for index in list(range(5)):
@@ -595,40 +746,38 @@ def gen_numbers_init(desert):
             numbers[location] = "0 "
     return numbers
         
-def display_map(board, numbers, buildings, buildings_dict, roads, roads_dict,  thief):
+def display_map(board, numbers, buildings, buildings_dict, roads, roads_dict, thief, ports):
     board[thief] = "0"
     map_display = ""
-    map_display += str("                                ==                  ==                  ==                                 " +'\n')
+    map_display += str("                                ==             " + ports[0] + "    ==                  ==    " + ports[1] + "                            " +'\n')
     map_display += str("                            ==      ==          ==      ==          ==      ==                             " +'\n')
     map_display += str("                        ==              ==  ==              ==  ==              ==                         " +'\n')
     map_display += str("                        ==     " + board[0] + "   " + numbers[0] + "   ==  ==     " +board[1] + "    " + numbers[1] + "  ==  ==     " + board[2] + "    " + numbers[2] + "  ==                         " +'\n')
     map_display += str("                        ==              ==  ==              ==  ==              ==                         " +'\n')
-    map_display += str("                      ==    ==      ==    ==    ==      ==    ==    ==      ==    ==                       " +'\n')
+    map_display += str("                 " + ports[8] + "    ==    ==      ==    ==    ==      ==    ==    ==      ==    ==                       " +'\n')
     map_display += str("                  ==      ==    ==    ==      ==    ==    ==      ==    ==    ==      ==                   " +'\n')
     map_display += str("              ==              ==  ==              ==  ==              ==  ==              ==               " +'\n')
-    map_display += str("              ==    "+board[3]+"    "+numbers[3]+"   ==  ==    " + board[4] + "    " + numbers[4] + "   ==  ==    " + board[5] +"    " + numbers[5] + "   ==  ==    " + board[6] + "    " + numbers[6] + "   ==               " +'\n')
+    map_display += str("              ==    "+board[3]+"    "+numbers[3]+"   ==  ==    " + board[4] + "    " + numbers[4] + "   ==  ==    " + board[5] +"    " + numbers[5] + "   ==  ==    " + board[6] + "    " + numbers[6] + "   ==  " + ports[2] + "            " +'\n')
     map_display += str("              ==              ==  ==              ==  ==              ==  ==              ==               " +'\n')
     map_display += str("            ==    ==      ==    ==    ==      ==    ==    ==      ==    ==    ==      ==    ==             " +'\n')
     map_display += str("        ==      ==    ==    ==      ==    ==    ==      ==    ==    ==      ==    ==    ==      ==         " +'\n')
     map_display += str("    ==              ==  ==              ==  ==              ==  ==              ==  ==              ==     " +'\n')
-    map_display += str("    ==    " + board[7] +"    " + numbers[7] + "   ==  ==    " + board[8] + "    " + numbers[8] + "   ==  ==    " +board[9] + "    " + numbers[9] +"   ==  ==    " + board[10] + "    " + numbers[10] +"   ==  ==    " + board[11] + "    " + numbers[11] + "   ==     " +'\n')
+    map_display += str(" " + ports[7] + "  ==    " + board[7] +"    " + numbers[7] + "   ==  ==    " + board[8] + "    " + numbers[8] + "   ==  ==    " +board[9] + "    " + numbers[9] +"   ==  ==    " + board[10] + "    " + numbers[10] +"   ==  ==    " + board[11] + "    " + numbers[11] + "   ==     " +'\n')
     map_display += str("    ==              ==  ==              ==  ==              ==  ==              ==  ==              ==     " +'\n')
     map_display += str("        ==      ==    ==    ==      ==    ==    ==      ==    ==    ==      ==    ==    ==      ==         " +'\n')
     map_display += str("            ==    ==      ==    ==    ==      ==    ==    ==      ==    ==    ==      ==    ==             " +'\n')
     map_display += str("              ==              ==  ==              ==  ==              ==  ==              ==               " +'\n')
-    map_display += str("              ==    "+board[12]+"    "+numbers[12]+"   ==  ==    " + board[13] + "    " + numbers[13] + "   ==  ==    " + board[14] +"    " + numbers[14] + "   ==  ==    " + board[15] + "    " + numbers[15] + "   ==               " +'\n')
+    map_display += str("              ==    "+board[12]+"    "+numbers[12]+"   ==  ==    " + board[13] + "    " + numbers[13] + "   ==  ==    " + board[14] +"    " + numbers[14] + "   ==  ==    " + board[15] + "    " + numbers[15] + "   ==  " + ports[3] + "            " +'\n')
     map_display += str("              ==              ==  ==              ==  ==              ==  ==              ==               " +'\n')
     map_display += str("                  ==      ==    ==    ==      ==    ==    ==      ==    ==    ==      ==                   " +'\n')
-    map_display += str("                      ==    ==      ==    ==    ==      ==    ==    ==      ==    ==                       " +'\n')
+    map_display += str("                 " + ports[6] + "    ==    ==      ==    ==    ==      ==    ==    ==      ==    ==                       " +'\n')
     map_display += str("                        ==              ==  ==              ==  ==              ==                         " +'\n')
     map_display += str("                        ==     " + board[16] + "   " + numbers[16] + "   ==  ==     " +board[17] + "    " + numbers[17] + "  ==  ==     " + board[18] + "    " + numbers[18] + "  ==                         " +'\n')
     map_display += str("                        ==              ==  ==              ==  ==              ==                         " +'\n')
     map_display += str("                            ==      ==          ==      ==          ==      ==                             " +'\n')
-    map_display += str("                                ==                  ==                  ==                                 " +'\n')
+    map_display += str("                                ==             " + ports[5] + "    ==                  ==    " + ports[4] + "                            " +'\n')
     map_display = string_to_list(map_display)
     for building in buildings:
-        print(building)
-        print(buildings_dict[building[0]])
         map_display[buildings_dict[building[0]]] = str(building[1])
         map_display[buildings_dict[building[0]]+1] = str(building[2])
     for road in roads:
@@ -660,16 +809,18 @@ def place_first_town(player, buildings, roads, map_display, buildings_to_roads_d
     road_location  = -1
     while location == -1:
         try:
-            row = raw_input("What row do you want to place your building on?")
-            row = int(row)
-            column = raw_input("What column do you want to place your building on?")
-            column = int(column)
-            direction = raw_input("what direction do you want to place your building on?")
-            direction = int(column)
+            string = str("What row do you want to place your building on?" + '\n')
+            print(string)
+            row = get_input(["I", [1, 2, 3, 4, 5]], "--> ")
+            string = str("What column do you want to place your building on?" +'\n')
+            print(string)
+            column = get_input(["I", [1, 2, 3, 4, 5]], "--> ")
+            string = str("What direction do you want to place your building on?" + '\n')
+            print(string)
+            direction = get_input(["I", [1, 2, 3, 7, 8, 9]], "--> ")
             location = find_desired_location_building(row, column, direction)
-            road_direction = raw_input("What direction would you like to build your road in?")
-            road_direction = int(road_direction)
-            road_location = find_desired_location_road_init(road_direction, location, buildings_to_roads_dict)
+            if location == -1:
+                print("That is no a real place.  Please try again.")
         except:
             print("That place don't make any sense")
             location= -1
@@ -677,6 +828,13 @@ def place_first_town(player, buildings, roads, map_display, buildings_to_roads_d
         if valid != 1:
             location = -1
             print("Sorry, that is an invalid location")
+    string = str("What direction would you like to build your road in?" + '\n')
+    print(string)
+    while road_location == -1:
+        road_direction = get_input(["I", [1, 2, 3, 7, 8, 9]], "--> ")
+        road_location = find_desired_location_road_init(road_direction, location, buildings_to_roads_dict)
+        if road_location == -1:
+            print("That is not a valid road location.")
     buildings.append([location, str(player), "S"])
     roads.append([road_location, str(player), "R"])
     players_total_buildings = 0
@@ -706,6 +864,52 @@ def place_first_town(player, buildings, roads, map_display, buildings_to_roads_d
             
     return [buildings]
 
+def find_usable_ports(players, player_turn_index, buildings, ports):
+    usable_buildings = []
+    for building in buildings:
+        if building[1] == players[player_turn_index]:
+            if building[0] in [3, 4, 6, 7, 8, 9, 16, 17, 26, 28, 37, 39, 40, 47, 50, 51, 53, 54]:
+                usable_buildings.append(building[0])
+    usable_ports = []
+    for location in usable_buildings:
+        if location in [3, 4]:
+            usable_ports.append(0)
+        if location in [6, 7]:
+            usable_ports.append(1)
+        if location in [16, 26]:
+            usable_ports.append(2)
+        if location in [37, 47]:
+            usable_ports.append(3)
+        if location in [53, 54]:
+            usable_ports.append(4)
+        if location in [50, 51]:
+            usable_ports.append(5)
+        if location in [39, 40]:
+            usable_ports.append(6)
+        if location in [17, 28]:
+            usable_ports.append(7)
+        if location in [8, 9]:
+            usable_ports.append(8)
+    trades = [4, 4, 4, 4, 4]
+    usable_ports_string = []
+    for port in usable_ports:
+        usable_ports_string.append(ports[port])
+    if "?" in usable_ports_string:
+        trades = [3, 3, 3, 3, 3]
+    if "S" in usable_ports_string:
+        trades[0] = 2
+    if "W" in usable_ports_string:
+        trades[1] = 2
+    if "G" in usable_ports_string:
+        trades[2] = 2
+    if "B" in usable_ports_string:
+        trades[3] = 2
+    if "O" in usable_ports_string:
+        trades[4] = 2
+    return trades
+    
+            
+
 def test_if_building_is_in_range(location, buildings, buildings_to_roads_dict):
     valid = 1
     list_of_roads = []
@@ -718,6 +922,22 @@ def test_if_building_is_in_range(location, buildings, buildings_to_roads_dict):
             if road == road_2:
                 valid = -1
     return valid
+
+def generate_port_list(ports, shifter):
+    new_ports = []
+    if shifter == 0:
+        for x in ports:
+            for y in x:
+                new_ports.append(y)
+    if shifter == 1:
+        for x in [1, 2, 0]:
+            for y in ports[x]:
+                new_ports.append(y)
+    if shifter == 2:
+        for x in [2, 0, 1]:
+            for y in ports[x]:
+                new_ports.append(y)
+    return new_ports
 
 def find_desired_location_road_init(road_direction, location, buildings_to_roads_dict):
     if road_direction == 7:
@@ -733,10 +953,11 @@ def find_desired_location_road_init(road_direction, location, buildings_to_roads
     if road_direction == 1:
         modified_road_direction = 5
     desired_road = buildings_to_roads_dict[location][modified_road_direction]
+    if desired_road == 0:
+        desired_road = -1
     return desired_road
 
 def find_desired_location_road(row, column, direction):
-    print("Under construction.  Now the program with proceed to poop out!")
     location = -1
     if row == 1:
         if column == 1:
