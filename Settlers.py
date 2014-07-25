@@ -2,6 +2,7 @@ import random
 import copy
 board = ["", "","","","","","","","","","","","","","","","","",""]
 def main(players):
+    played_cards = []
     debug = 0
     string = '\n'
     print(string)
@@ -394,6 +395,29 @@ def build_all_buildings(board, numbers, buildings, buildings_dict, roads_dict, t
     display_map(board, numbers, buildings, buildings_dict, roads, roads_dict,  thief, ports)
     return
     
+def generate_random_card(players, player_turn_index, cards):
+    remaining_deck = []
+    for x in list(range(14)):
+        remaining_deck.append("Knight")
+    for x in list(range(5)):
+        remaining_deck.append("Victory_Point")
+    for x in [0, 1]:
+        remaining_deck.append("Year of Plenty")
+    for x in [0, 1]:
+        remaining_deck.append("Road Building")
+    for x in [0, 1]:
+        remaining_deck.append("Monopoly")
+    for player in cards:
+        for card in player:
+            remaining_deck.remove(card)
+    for card in played_cards:
+        remaining_deck.remove(card[0])
+    index = ing(random.random() * len(remaining_deck))
+    chosen_card = remaining_deck[index]
+    cards[player_turn_index].append(chosen_card)
+    string = str("Player " + players[player_turn_index] + " recieved the card " + chosen_card + "." + '\n')
+    print(string)
+    return cards
 
 def function_build(buildings, roads, cards, buildings_to_roads_dict, roads_to_roads_dict, inventories, players, player_turn_index, debug):
     string = str("What would you like to build/buy? [S]ettlement/ci[T]y/[R]oad/[C]ard/[E]xit" + '\n' + "-->")
